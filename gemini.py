@@ -30,7 +30,23 @@ try:
         )
     }
 
-    prompt = input("Introdueix el cas a analitzar (ex: Inversió en Cripto): ")
+    prompt = """Ets un expert en scoring bancari. Analitza una sol·licitud de préstec personal aplicant
+                aquests criteris exactes:
+                DADES OBLIGATORIES:
+                - Ingressos nets mensuals titular/cotitulars: 3200€ (2000€ titular + 1200€ cotitular)
+                - Quotes actuals de deutes: 800€
+                - Quota del nou préstec sol·licitat: 1200€
+                - Marge de supervivència (900€ persona sol·itària, 1400€ parella, +200€ per fill): 1400€ (parella sense fills)
+                - ASNEF: Sí/No: No
+                - Tipus contracte: Indefinit/Temporal/Autònom: Indefinit
+                - Nombre cotitulars: 1/2: 2
+                CÀLCULS QUE HAS DE FER:
+                1. Ràtio endeutament DTI = (Quotes actuals + Nova quota) / Ingressos nets * 100
+                2. Capital disponible = Ingressos nets - Total quotes - Marge supervivència
+                SEMÀFOR DE DECISIÓ:
+                - VERD: DTI ≤30% + Capital >300€ + No ASNEF + Contracte indefinit
+                - GROC: DTI 30-40% O capital 0-300€ O contracte temporal
+                - VERMELL: DTI >40% O capital negatiu O ASNEF Sí"""
 
     # 4. Petició a la API amb el model Flash i la nostra config
     resposta = client.models.generate_content(
