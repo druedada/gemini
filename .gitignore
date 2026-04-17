@@ -1,0 +1,20 @@
+# Entorns virtuals
+.venv/
+venv/
+env/
+bin/
+lib/
+share/
+Include/
+
+# Variables d'entorn (Súper important!)
+.env
+
+# Cache de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDEs
+.vscode/
+.idea/
