@@ -21,36 +21,40 @@ try:
     config_analista = {
         'temperature': 0.3,      # Baixa per ser precisos i no inventar (Instruccions txt)
         'top_p': 0.95,           # Flux natural de paraules
-        'max_output_tokens': 800, # Limit de llargada de la resposta
+        'max_output_tokens': 1200, # Limit de llargada de la resposta
         'system_instruction': (
-            "Ets un analista de riscos professionals. "
-            "La teva feina és identificar amenaces i vulnerabilitats. "
-            "Sempre respon amb un to seriós, tècnic i estructura la "
-            "informació en una taula Markdown amb columnes: 'Risc', 'Probabilitat' i 'Impacte'."
+        "Ets un analista de riscos bancaris. "
+        "Respon NOMÉS amb aquest format, sense introducció ni càlculs detallats:\n"
+        "Veredicte: APTE / NO APTE\n"
+        "Semàfor: VERD / GROC / VERMELL\n"
+        "Motiu: una sola frase breu.\n"
+        "No afegeixis cap altre text."
         )
     }
 
-    prompt = """Ets un expert en scoring bancari. Analitza una sol·licitud de préstec personal aplicant
-                aquests criteris exactes:
-                DADES OBLIGATORIES:
-                - Ingressos nets mensuals titular/cotitulars: 3200€ (2000€ titular + 1200€ cotitular)
-                - Quotes actuals de deutes: 800€
-                - Quota del nou préstec sol·licitat: 1200€
-                - Marge de supervivència (900€ persona sol·itària, 1400€ parella, +200€ per fill): 1400€ (parella sense fills)
-                - ASNEF: Sí/No: No
-                - Tipus contracte: Indefinit/Temporal/Autònom: Indefinit
-                - Nombre cotitulars: 1/2: 2
-                CÀLCULS QUE HAS DE FER:
-                1. Ràtio endeutament DTI = (Quotes actuals + Nova quota) / Ingressos nets * 100
-                2. Capital disponible = Ingressos nets - Total quotes - Marge supervivència
-                SEMÀFOR DE DECISIÓ:
-                - VERD: DTI ≤30% + Capital >300€ + No ASNEF + Contracte indefinit
-                - GROC: DTI 30-40% O capital 0-300€ O contracte temporal
-                - VERMELL: DTI >40% O capital negatiu O ASNEF Sí"""
+    prompt = """
+    Analitza la sol·licitud i respon només amb:
+    Veredicte: APTE o NO APTE
+    Semàfor: VERD, GROC o VERMELL
+    Motiu: una sola frase breu
+
+    Dades:
+    - Ingressos nets: 3200€
+    - Quotes actuals: 100€
+    - Nova quota: 500€
+    - Marge supervivència: 1400€
+    - ASNEF: Si
+    - Contracte: Indefinit
+
+    Criteris:
+    - VERD: DTI ≤30% + capital >300€ + no ASNEF + contracte indefinit
+    - GROC: DTI 30-40% o capital 0-300€ o contracte temporal
+    - VERMELL: DTI >40% o capital negatiu o ASNEF Sí
+    """
 
     # 4. Petició a la API amb el model Flash i la nostra config
     resposta = client.models.generate_content(
-        model='gemini-2.0-flash', # Model estàndard segons instruccions
+        model='gemini-2.5-flash', # Model estàndard segons instruccions
         contents=prompt,
         config=config_analista
     )
