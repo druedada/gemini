@@ -40,35 +40,52 @@ try:
         ),
     }
 
-    ingressos_nets = 3200
+    ingressos_nets = 1000
     quotes_actuals = 100
     nova_quota = 500
     marge_supervivencia = 1400
     asnef = False
-    contracte = 'Indefinit'
+    contracte = 'Indefinit' # Pot ser 'Indefinit', 'Temporal' o 'Autonom'
 
+    total_quotes_mensuals = quotes_actuals + nova_quota
+  
+    rati_endeutament = (total_quotes_mensuals / ingressos_nets) * 100
+    print(f"Rati endeutament calculat: {rati_endeutament:.2f}%")
     prompt = f"""
-Analitza la sol·licitud i respon en JSON vàlid.
+    Analitza la sol·licitud i respon en JSON vàlid.
 
-Dades:
-- Ingressos nets: {ingressos_nets}€
-- Quotes actuals: {quotes_actuals}€
-- Nova quota: {nova_quota}€
-- Marge supervivència: {marge_supervivencia}€
-- ASNEF: {'Si' if asnef else 'No'}
-- Contracte: {contracte}
+    Dades:
+    - Ingressos nets: {ingressos_nets}€
+    - Quotes actuals: {quotes_actuals}€
+    - Nova quota: {nova_quota}€
+    - Total quotes mensuals de deutes: {total_quotes_mensuals}€
+    - Marge supervivència: {marge_supervivencia}€
+    - ASNEF: {'Si' if asnef else 'No'}
+    - Contracte: {contracte}
+    - Rati endeutament: {rati_endeutament:.2f}%
 
-Criteris:
-- VERD: DTI <=30% + capital >300€ + no ASNEF + contracte indefinit
-- GROC: DTI 30-40% o capital 0-300€ o contracte temporal
-- VERMELL: DTI >40% o capital negatiu o ASNEF Sí
-"""
+    Criteris:
+    - VERD: DTI <=30% + capital >300€ + no ASNEF + contracte indefinit
+    - GROC: DTI 30-40% o capital 0-300€ o contracte temporal
+    - VERMELL: DTI >40% o capital negatiu o ASNEF Sí
+    """
+
 
     if asnef:
         resultat = {
             'Veredicte': 'NO APTE',
             'Semafor': 'VERMELL',
             'Motiu': 'ASNEF Sí',
+            'Rati_endeutament': round(rati_endeutament, 2),
+        }
+        print(json.dumps(resultat, ensure_ascii=False, indent=2))
+        sys.exit(0)
+    elif rati_endeutament > 40:
+        resultat = {
+            'Veredicte': 'NO APTE',
+            'Semafor': 'VERMELL',
+            'Motiu': f'Rati endeutament alt: {rati_endeutament:.2f}%',
+            'Rati_endeutament': round(rati_endeutament, 2),
         }
         print(json.dumps(resultat, ensure_ascii=False, indent=2))
         sys.exit(0)
@@ -104,6 +121,7 @@ Criteris:
         'Veredicte': resultat.get('Veredicte'),
         'Semafor': resultat.get('Semafor'),
         'Motiu': resultat.get('Motiu'),
+        'Rati_endeutament': round(rati_endeutament, 2),
     }
 
     if hasattr(resposta, 'usage_metadata') and resposta.usage_metadata is not None:
