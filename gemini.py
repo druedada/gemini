@@ -32,19 +32,27 @@ try:
         )
     }
 
-    prompt = """
+    ingressos_nets = 3200
+    quotes_actuals = 100
+    nova_quota = 500
+    marge_supervivencia = 1400
+    asnef = False
+    contracte = "Indefinit"
+    
+
+    prompt = f"""
     Analitza la sol·licitud i respon només amb:
     Veredicte: APTE o NO APTE
     Semàfor: VERD, GROC o VERMELL
     Motiu: una sola frase breu
 
     Dades:
-    - Ingressos nets: 3200€
-    - Quotes actuals: 100€
-    - Nova quota: 500€
-    - Marge supervivència: 1400€
-    - ASNEF: Si
-    - Contracte: Indefinit
+    - Ingressos nets: {ingressos_nets}€
+    - Quotes actuals: {quotes_actuals}€
+    - Nova quota: {nova_quota}€
+    - Marge supervivència: {marge_supervivencia}€
+    - ASNEF: {'Si' if asnef else 'No'}
+    - Contracte: {contracte}
 
     Criteris:
     - VERD: DTI ≤30% + capital >300€ + no ASNEF + contracte indefinit
@@ -53,15 +61,21 @@ try:
     """
 
     # 4. Petició a la API amb el model Flash i la nostra config
-    resposta = client.models.generate_content(
-        model='gemini-2.5-flash', # Model estàndard segons instruccions
-        contents=prompt,
-        config=config_analista
-    )
+    if asnef:
+        resposta = "NO APTE, VERMELL, ASNEF Sí"
+    else:
+        resposta = client.models.generate_content(
+            model='gemini-2.5-flash', # Model estàndard segons instruccions
+            contents=prompt,
+            config=config_analista
+        )
 
     print(f"\n{5*'='} ANÀLISI DE RISC OBTINGUT {5*'='}")
-    print(f"{resposta.text}\n")
-    print(f"Tokens gastats: {resposta.usage_metadata.total_token_count}")
+    if isinstance(resposta, str):
+        print(f"{resposta}\n")
+    else:
+        print(f"{resposta.text}\n")
+        print(f"Tokens gastats: {resposta.usage_metadata.total_token_count}")
 
 except Exception as e:
     print(f"Error: {e} - No es genera resposta")
