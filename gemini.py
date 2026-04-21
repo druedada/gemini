@@ -76,8 +76,16 @@ try:
     """
 
     # ? Apliquem regles bàsiques abans de consultar el model per evitar costos innecessaris en casos clarament no aptes
-    # Si el client està a Asnef --> No apte directe sense consultar el model
-    if asnef:
+    if (not asnef and contracte == 'Indefinit' and marge_supervivencia > (900 + fills * 200) and titulars == 1) or (marge_supervivencia > (1500 + fills * 200) and titulars == 2):
+        resultat = {
+            'Veredicte': 'APTE',
+            'Semafor': 'VERD',
+            'Motiu': 'Complix criteris bàsics d\'aptesa',
+            'Rati_endeutament': round(rati_endeutament, 2),
+        }
+        print(json.dumps(resultat, ensure_ascii=False, indent=2))
+        sys.exit(0)
+    elif asnef:     # Si el client està a Asnef --> No apte directe sense consultar el model
         resultat = {
             'Veredicte': 'NO APTE',
             'Semafor': 'VERMELL',
