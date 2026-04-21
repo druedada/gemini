@@ -1,60 +1,95 @@
-'''Connectar-nos a l'Api de Gemini i configurar Rol d'Analista'''
+"""Connector a Gemini per a una decisió de risc bancari estructurada.
+
+La clau es llegeix des de `.env` i no s'incrusta al codi. El model escollit,
+`gemini-2.5-flash`, està orientat a respostes ràpides i consistents, útils per
+a una sortida JSON estable i fàcil d'integrar.
+"""
 import os
 import sys
 import json
 import time
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
-# 1. Carreguem la clau des del fitxer .env
-load_dotenv()
-CLAU = os.getenv('KEYAPI')
+load_dotenv(dotenv_path=".env")
+CLAU = os.getenv("KEYAPI")
 
-if CLAU is None:
+if not CLAU:
     print("Alguna cosa no ha anat bé en el procés d'agafar la clau!!")
     sys.exit(1)
 
-# 2. Creem el client
 try:
-    client = genai.Client(api_key=CLAU)
+    client = genai.Client(
+        api_key=CLAU,
+        http_options=types.HttpOptions(timeout=15000),
+    )
 
-    # 3. Configuració del rol i format de sortida: JSON natiu
-    config_analista = {
-        'temperature': 0.3,
-        'top_p': 0.95,
-        'max_output_tokens': 1200,
-        'response_mime_type': 'application/json',
-        'response_schema': {
-            'type': 'OBJECT',
-            'required': ['Veredicte', 'Semafor', 'Motiu'],
-            'properties': {
-                'Veredicte': {'type': 'STRING', 'enum': ['APTE', 'NO APTE']},
-                'Semafor': {'type': 'STRING', 'enum': ['VERD', 'GROC', 'VERMELL']},
-                'Motiu': {'type': 'STRING'},
+    # Paràmetres ajustats per prioritzar estabilitat, baixa creativitat i
+    # sortida curta en format JSON.
+    config_analista = types.GenerateContentConfig(
+        temperature=0.2,
+        top_p=0.9,
+        max_output_tokens=512,
+        response_mime_type="application/json",
+        response_schema={
+            "type": "OBJECT",
+            "required": ["Veredicte", "Semafor", "Motiu"],
+            "properties": {
+                "Veredicte": {"type": "STRING", "enum": ["APTE", "NO APTE"]},
+                "Semafor": {"type": "STRING", "enum": ["VERD", "GROC", "VERMELL"]},
+                "Motiu": {"type": "STRING"},
             },
         },
-        'system_instruction': (
-            'Ets un analista de riscos bancaris. '\
-            'Respon sempre en JSON vàlid amb les claus exactes: '\
-            'Veredicte, Semafor, Motiu. No afegeixis text fora del JSON.'
+        system_instruction=(
+            "Ets un analista de riscos bancaris. "
+            "Respon sempre en JSON vàlid amb les claus exactes: "
+            "Veredicte, Semafor, Motiu. "
+            "No afegeixis text fora del JSON."
         ),
-    }
-    # Introdueix les dades del client aqui:
+    )
+    # Dades del cas.
     ingressos_nets = 3000
     quotes_actuals = 100
     nova_quota = 500
     marge_supervivencia = 1400
     asnef = False
-    titulars = 1 # Nombre de titulars (1 o 2)
-    fills = 0 # Nombre de fills a càrrec
-    contracte = 'Indefinit' # Pot ser 'Indefinit', 'Temporal' o 'Autonom'
+    titulars = 1  # Nombre de titulars (1 o 2)
+    fills = 0  # Nombre de fills a càrrec
+    contracte = 'Indefinit'  # Pot ser 'Indefinit', 'Temporal' o 'Autonom'
 
-    # Calculem el rati d'endeutament
+    # Calculem el rati d'endeutament.
     total_quotes_mensuals = quotes_actuals + nova_quota
     rati_endeutament = (total_quotes_mensuals / ingressos_nets) * 100
 
-    prompt = f"""
+    # Evolució del prompt:
+    # v1: massa obert, útil només com a base de prova.
+    # v2: força el JSON, però encara és pobre en context de risc.
+    # v3: consolida les regles finals, el format i la justificació esperada.
+    prompt_v1 = f"""
+    Analitza la sol·licitud.
+
+    Dades:
+    - Ingressos nets: {ingressos_nets}€
+    - Quotes actuals: {quotes_actuals}€
+    - Nova quota: {nova_quota}€
+    """
+
+    prompt_v2 = f"""
     Analitza la sol·licitud i respon en JSON vàlid.
+
+    Dades:
+    - Ingressos nets: {ingressos_nets}€
+    - Quotes actuals: {quotes_actuals}€
+    - Nova quota: {nova_quota}€
+    - ASNEF: {'Si' if asnef else 'No'}
+    - Contracte: {contracte}
+
+    - Rati endeutament: {rati_endeutament:.2f}%
+    """
+
+    prompt_final = f"""
+    Analitza la sol·licitud de risc i respon només en JSON vàlid.
 
     Dades:
     - Ingressos nets: {ingressos_nets}€
@@ -66,17 +101,21 @@ try:
     - Contracte: {contracte}
     - Titulars: {titulars}
     - Fills a càrrec: {fills}
-
     - Rati endeutament: {rati_endeutament:.2f}%
 
     Criteris:
     - VERD: DTI <=30% + capital >300€ + no ASNEF + contracte indefinit
     - GROC: DTI 30-40% o capital 0-300€ o contracte temporal
     - VERMELL: DTI >40% o capital negatiu o ASNEF Sí
-    """
 
-    # ? Apliquem regles bàsiques abans de consultar el model per evitar costos innecessaris en casos clarament no aptes
-    # Si el client està a Asnef --> No apte directe sense consultar el model
+    Resposta esperada:
+    - Veredicte: APTE o NO APTE
+    - Semafor: VERD, GROC o VERMELL
+    - Motiu: justificació breu i tècnica
+    """
+    prompt = prompt_final
+
+    # Regles deterministes: si el cas és clar, no cal consumir crides al model.
     if asnef:
         resultat = {
             'Veredicte': 'NO APTE',
