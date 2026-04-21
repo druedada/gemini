@@ -24,6 +24,9 @@ try:
         'top_p': 0.8,  # Limita el conjunt de paraules candidates.
         'max_output_tokens': 512,  # Evita respostes massa llargues.
         'response_mime_type': 'application/json',  # Força sortida JSON.
+        'http_options': {
+            'timeout': 15000,  # Timeout curt per no quedar-se esperant massa.
+        },
         'response_schema': {
             # Esquema mínim per validar la resposta.
             'type': 'OBJECT',
@@ -115,7 +118,7 @@ try:
         except Exception as err:
             missatge = str(err)
             if '503' in missatge and intent < max_retries:
-                time.sleep(intent)
+                time.sleep(min(intent, 2))
                 continue
             raise
 
