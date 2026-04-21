@@ -39,18 +39,20 @@ try:
             'Veredicte, Semafor, Motiu. No afegeixis text fora del JSON.'
         ),
     }
-
-    ingressos_nets = 1000
+    # Introdueix les dades del client aqui:
+    ingressos_nets = 3000
     quotes_actuals = 100
     nova_quota = 500
     marge_supervivencia = 1400
     asnef = False
+    titulars = 1 # Nombre de titulars (1 o 2)
+    fills = 0 # Nombre de fills a càrrec
     contracte = 'Indefinit' # Pot ser 'Indefinit', 'Temporal' o 'Autonom'
 
+    # Calculem el rati d'endeutament
     total_quotes_mensuals = quotes_actuals + nova_quota
-  
     rati_endeutament = (total_quotes_mensuals / ingressos_nets) * 100
-    print(f"Rati endeutament calculat: {rati_endeutament:.2f}%")
+
     prompt = f"""
     Analitza la sol·licitud i respon en JSON vàlid.
 
@@ -62,6 +64,9 @@ try:
     - Marge supervivència: {marge_supervivencia}€
     - ASNEF: {'Si' if asnef else 'No'}
     - Contracte: {contracte}
+    - Titulars: {titulars}
+    - Fills a càrrec: {fills}
+
     - Rati endeutament: {rati_endeutament:.2f}%
 
     Criteris:
@@ -70,7 +75,8 @@ try:
     - VERMELL: DTI >40% o capital negatiu o ASNEF Sí
     """
 
-
+    # ? Apliquem regles bàsiques abans de consultar el model per evitar costos innecessaris en casos clarament no aptes
+    # Si el client està a Asnef --> No apte directe sense consultar el model
     if asnef:
         resultat = {
             'Veredicte': 'NO APTE',
@@ -80,11 +86,21 @@ try:
         }
         print(json.dumps(resultat, ensure_ascii=False, indent=2))
         sys.exit(0)
+        
     elif rati_endeutament > 40:
         resultat = {
             'Veredicte': 'NO APTE',
             'Semafor': 'VERMELL',
             'Motiu': f'Rati endeutament alt: {rati_endeutament:.2f}%',
+            'Rati_endeutament': round(rati_endeutament, 2),
+        }
+        print(json.dumps(resultat, ensure_ascii=False, indent=2))
+        sys.exit(0)
+    elif (marge_supervivencia < (900 + fills * 200) and titulars == 1) or (marge_supervivencia < (1500 + fills * 200) and titulars == 2):
+        resultat = {
+            'Veredicte': 'NO APTE',
+            'Semafor': 'VERMELL',
+            'Motiu': f'Marge de supervivència insuficient: {marge_supervivencia}€ (mínim requerit: {(900 + fills * 200) if titulars == 1 else (1500 + fills * 200)}€)',
             'Rati_endeutament': round(rati_endeutament, 2),
         }
         print(json.dumps(resultat, ensure_ascii=False, indent=2))
